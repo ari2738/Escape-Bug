@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Escape Bug Game</title>
+    <style>
+        body { text-align:center; background:#f2f2f2; font-family:Arial; }
+        canvas { background:white; border:2px solid black; touch-action:none; }
+        #info { margin:10px; font-size:18px; }
+        button { padding:8px 15px; margin-top:10px; }
+    </style>
+</head>
+<body>
+
+<h2>Trap The Bug!</h2>
+<div id="info">
+Score: <span id="score">0</span> |
+Ink: <span id="ink">100</span>
+</div>
+
+<canvas id="gameCanvas" width="500" height="400"></canvas>
+<br>
+<button onclick="restartGame()">Restart</button>
+
+<script>
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
+
+let score = 0;
+let ink = 100;
+let drawing = false;
+let lines = [];
+
+let bug = {
+    x: 250,
+    y: 200,
+    radius: 10,
+    dx: 2,
+    dy: 2
+};
+
+function updateInfo() {
+    document.getElementById("score").innerText = score;
+    document.getElementById("ink").innerText = ink;
+}
+
+function getPos(e) {
+    let rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+        return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+        };
+    } else {
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+}
+
+canvas.addEventListener("mousedown", () => drawing = true);
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("touchstart", () => drawing = true);
+canvas.addEventListener("touchend", () => drawing = false);
+
+canvas.addEventListener("mousemove", drawLine);
+canvas.addEventListener("touchmove", function(e){
+    e.preventDefault();
+    drawLine(e);
+});
+
+function drawLine(e) {
+    if (!drawing || ink <= 0) return;
+
+    let pos = getPos(e);
+    lines.push({x: pos.x, y: pos.y});
+    ink -= 1;
+}
+
+function drawBug() {
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🐞", bug.x, bug.y);
+}
+
+function moveBug() {
+    bug.x += bug.dx;
+    bug.y += bug.dy;
+
+    // Border collision = Game Over
+    if (bug.x <= 0 || bug.x >= canvas.width ||
+        bug.y <= 0 || bug.y >= canvas.height) {
+        alert("Bug Escaped! Game Over!");
+        restartGame();
+    }
+
+    // Line collision
+    for (let i = 0; i < lines.length; i++) {
+        let dist = Math.sqrt(
+            (bug.x - lines[i].x) ** 2 +
+            (bug.y - lines[i].y) ** 2
+        );
+
+        if (dist < bug.radius) {
+            bug.dx *= -1;
+            bug.dy *= -1;
+        }
+    }
+}
+
+function drawLines() {
+    ctx.beginPath();
+    for (let i = 0; i < lines.length; i++) {
+        ctx.lineTo(lines[i].x, lines[i].y);
+    }
+    ctx.stroke();
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    moveBug();
+    drawBug();
+    drawLines();
+    updateInfo();
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Increase speed every 10 seconds
+setInterval(() => {
+    bug.dx *= 1.2;
+    bug.dy *= 1.2;
+    score += 10;
+}, 10000);
+
+function restartGame() {
+    bug.x = 250;
+    bug.y = 200;
+    bug.dx = 2;
+    bug.dy = 2;
+    lines = [];
+    score = 0;
+    ink = 100;
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
